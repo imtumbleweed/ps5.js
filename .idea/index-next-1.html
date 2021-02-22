@@ -1,0 +1,1147 @@
+<html>
+
+<head>
+
+    <title>PS5-UI.js</title>
+
+    <meta charset="UTF-8">
+
+    <meta name = "description" content = "HTML starter reset file">
+    <meta name = "keywords" content = "html, css, events, mouse, keyboard, mobile first, media queries">
+    <meta name = "author" content = "You">
+    <meta name = "viewport" content = "width=device-width, initial-scale=1.0">
+
+    <!-- Note: type "module", not "javascript" -->
+    <script type = "module">
+
+       // Map variables representing keys to ASCII codes
+       let [ A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z ] = Array.from({ length: 26 }, (v, i) => 65 + i);
+
+       const Delete = 46;
+       const Shift = 16;
+       const Ctrl = 17;
+       const Alt = 18;
+
+       const Left = 37;
+       const Right = 39;
+       const Up = 38;
+       const Down = 40;
+
+       const Enter = 13;
+       const Return = 13;
+       const Space = 32;
+       const Escape = 27;
+
+       // fetch GET example; todo: needs test data properties
+       false && fetch("https://www.twitter.com/followers.json", { method: "get"}).then( (response) => response.text().then(msg => {
+           console.log(msg); // Message returned from the server
+       }));
+
+      // Use $ and document.querySelectorAll instead of dinosauric document.querySelector function
+      let $ = selector => document.querySelector(selector);
+
+
+      // Sort json by multiple properties
+      const sortFields = (fields, invert) => (a, b) => fields.map(o => { let dir = 1; if (o[0] === '-') { dir = -1; o=o.substring(1); } return a[o] > b[o] ? dir : a[o] < b[o] ? -(dir) : 0;}).reduce((p, n) => p ? p : n, 0);
+
+      const MENU = Object.freeze({
+          system: {
+              name: `system`,
+              subitems:[
+                  [{title:"PlayStation Store", background:"https://semicolon.dev/static/playstation_5_teaser_v2.jpg"}],
+                  [{title:"Rocket",            background:"https://semicolon.dev/static/background-rocket.png"}],
+                  [{title:"Spiderman",         background:"https://semicolon.dev/static/background-8.png"}],
+                  [{title:"PlayStation Plus",  background:"https://semicolon.dev/static/background-plus.png"}],
+                  [{title:"PlayStation Now",   background:"https://semicolon.dev/static/background-ps-now.png"}],
+                  [{title:"Controller",        background:"https://semicolon.dev/static/playstation_5_teaser_v2.jpg"}],
+                  [{title:"Photos",            background:"https://semicolon.dev/static/playstation_5_teaser_v2.jpg"}],
+                  [{title:"Empty 1",           background:"https://semicolon.dev/static/playstation_5_teaser_v2.jpg"}],
+                  [{title:"Empty 2",           background:"https://semicolon.dev/static/playstation_5_teaser_v2.jpg"}],
+                  [{title:"Empty 3",           background:"https://semicolon.dev/static/playstation_5_teaser_v2.jpg"}],]},
+          selectuser: {
+              name: `select-user`,
+              subitems:
+                   []
+          },
+          main: {
+               name: `main`,
+               subitems:
+                   []},
+          browser: {
+               name: `browser`,
+               subitems:
+                   []},
+          settings: {
+               name: `settings`,
+               subitems:
+                   []},
+      });
+
+      // queable menu
+      let menu = null;
+
+      // menu queue object for layered PS5 navigation
+      class MenuPS5 {
+
+          constructor() {
+              this.queue = []
+              this.selectedItemId = null;
+              this.selectedUserId = 1;
+
+              this.browsingGames = false;
+
+              this.x = 0; // cursor position on the select-game grid
+              this.y = 0;
+              this.selectedGameId = 0;
+          }
+
+          set push(elementId) {
+
+              // hide previous menu on the queue by removing "current" class
+              this.queue.length > 0 && this.queue[this.queue.length - 1].classList.remove(`current`)
+
+              // remove events from current menu
+              // todo
+
+              // get menu container
+              const m = $(`#${elementId}`)
+
+              // make the new menu appear by applying "current" class
+              !m.classList.contains(`current`) && m.classList.add(`current`)
+
+              // push this element onto the menu queue
+              this.queue.push( m )
+
+              AttachEventsFor( elementId )
+
+              console.log(`Pushed #${elementId} onto the menu queue`)
+          }
+
+          pop() {
+              // remove current menu from queue
+              const element = this.queue.pop()
+
+              console.log(`Removed #${element.getAttribute('id')} from the menu queue`)
+          }
+      }
+
+class Background {constructor() {}}
+
+Background.change = url => {
+    console.log(`Changing background to ${url}`)
+
+    let currentBackground = $(`.currentBackground`);
+    let nextBackground = $(`.nextBackground`);
+
+    // set new background to url
+    nextBackground.style.backgroundImage = `url(${url})`
+    currentBackground.style.backgroundImage = ''
+
+    // fade in and out
+    currentBackground.classList.remove('fade-in')
+    nextBackground.classList.add('fade-in')
+
+    // swap background identity
+    currentBackground.classList.remove('currentBackground')
+    currentBackground.classList.add('nextBackground')
+    nextBackground.classList.remove('nextBackground')
+    nextBackground.classList.add('currentBackground')
+}
+
+function HorizontalOffset(parent, id) {
+    if (typeof(parent) == "object") {
+        parent.className.split(' ').forEach(className => {
+            // remove all classes starting with `off`
+            if (className.substring(0, 3) == `off`)
+                parent.classList.remove( className )
+            // add off-id class
+            parent.classList.add(`off-${id}`)
+        })
+    }
+}
+
+function VerticalOffset(parent, id) {
+    if (typeof(parent) == "object") {
+        parent.className.split(' ').forEach(className => {
+            if (className.substring(0, 2) == `y-`)
+                parent.classList.remove( className )
+            parent.classList.add(`y-${id}`)
+        })
+    }
+}
+
+// Helper function to select 1 item from a set
+function SelectItem(all, target) {
+    if (typeof(all) == "string" && typeof(target) == "string") {
+        document.querySelectorAll(all).forEach(it => it.classList.remove('current'))
+        $(target).classList.add('current')
+        menu.selectedItemId = $(target).dataset.id
+    }
+    if (typeof(all) == "object" && typeof(target) == "object") {
+        all.forEach(it => it.classList.remove('current'))
+        target.classList.add('current')
+        menu.selectedItemId = target.dataset.id
+    }
+}
+
+// Reset a menu to its original state right before it opens
+function InitializeMenu( parentElementId ) {
+
+}
+
+let detach_keyboard_events_function = nul => { }
+
+let detach_mouse_events_function = nul => { }
+
+function keyboard_events_main_menu(e) {
+
+    const oo = $(`#oo`);
+
+    let key = e.which || e.keyCode;
+
+    let currentlySelectedItemId = menu.selectedItemId;
+
+    let previousGameXY = `[data-id="game-0-0"]`
+
+    console.log(`menu.browsingGames = ${menu.browsingGames}`)
+
+    if (menu.browsingGames == false) {
+
+        if (key == Left) {
+
+            console.log(`Controls: ${key} (Left)`)
+            if (menu.selectedItemId > 0)
+                menu.selectedItemId--;
+            else
+                menu.selectedItemId = 9
+
+            const all = `#primary .sel`
+            const target = `#o${menu.selectedItemId}`
+            SelectItem(all, target)
+            HorizontalOffset(primary, menu.selectedItemId)
+
+            // Set title
+            oo.innerHTML = MENU[`system`].subitems[ menu.selectedItemId ][ 0 ].title;
+
+            // If this item has a background image, display it
+            // const background = MENU[`system`].subitems[ menu.selectedItemId ][ 0 ].background;
+            // if (background) Background.change(background)
+        }
+
+        if (key == Right) {
+
+            console.log(`Controls: ${key} (Right)`)
+            if (menu.selectedItemId < 9)
+                menu.selectedItemId++;
+            else
+                menu.selectedItemId = 0;
+
+            const all = `#primary .sel`
+            const target = `#o${menu.selectedItemId}`
+            SelectItem(all, target)
+            HorizontalOffset(primary, menu.selectedItemId)
+
+            // Set title
+            oo.innerHTML = MENU[`system`].subitems[ menu.selectedItemId ][ 0 ].title;
+
+            // If this item has a background image, display it
+            // const background = MENU[`system`].subitems[ menu.selectedItemId ][ 0 ].background;
+            // if (background) Background.change(background)
+        }
+
+        if (key == Enter || key == Space) {
+
+            // remove .current class from main menu
+            const target = $(`.sel.current`)
+            target.classList.remove('current')
+
+            const id = `[data-id="game-${menu.x}-${menu.y}"]`;
+
+            // assign current to the first game on the list
+            $(id).classList.add('current')
+
+            // memorize currently selected item as previous for future updates
+            previousGameXY = id
+
+            menu.browsingGames = true
+        }
+
+    } else { // browse games
+
+        let gb = $(`#game-browser`);
+
+        document.querySelectorAll(`.game.current`).forEach(el => el.classList.remove('current'))
+        document.querySelectorAll(`.under`).forEach(el => el.style.background = '')
+        document.querySelectorAll(`.lightwave`).forEach(el => el.style.background = '')
+
+        if (key == Left) {
+            console.log('left')
+            if (menu.x > 0) menu.x--
+        }
+
+        if (key == Right) {
+            console.log('right')
+            if (menu.x < 3) menu.x++
+        }
+
+        if (key == Up) {
+            console.log('up')
+            if (menu.y > 0) menu.y--
+        }
+
+        if (key == Down) {
+            console.log('down')
+            if (menu.y < 3) menu.y++
+        }
+
+console.log(gb)
+        VerticalOffset(gb, menu.y)
+
+        const id = `[data-id="game-${menu.x}-${menu.y}"]`
+
+        $(id).classList.add('current')
+
+        previousGameXY = id
+    }
+
+    console.log(`currentlySelectedItemId  = ${currentlySelectedItemId}`)
+
+    // remove selected gradient from previously selected item
+    $(`#o${currentlySelectedItemId} .under`).style.background = `#1f1f1f`;
+
+    // clear lightspot effect from prevously selected item
+    $(`#o${currentlySelectedItemId} .lightwave`).style.backgroundImage = ``;
+}
+
+function keyboard_events_select_user(e) {
+
+    let key = e.which || e.keyCode;
+
+    let container = $(`#select-user-container`)
+    let selectuser = $(`#selectuser`)
+
+    if (key == Left) {
+        if (menu.selectedUserId > 0)
+            menu.selectedUserId--;
+        const all = `#select-user-container .user-box`
+        const target = `#user-${menu.selectedUserId}`
+        SelectItem(all, target)
+        HorizontalOffset(container, menu.selectedUserId)
+    }
+
+    if (key == Right) {
+        if (menu.selectedUserId < 2)
+            menu.selectedUserId++;
+        const all = `#select-user-container .user-box`
+        const target = `#user-${menu.selectedUserId}`
+        SelectItem(all, target)
+        HorizontalOffset(container, menu.selectedUserId)
+    }
+
+    if (key == Enter || key == Space) {
+
+        selectuser.classList.add('disappear')
+
+        setTimeout(event => {
+            selectuser.style.display = 'none'
+        }, 1000)
+
+        setTimeout(time => {
+            StartMainMenu()
+            DetachKeyboardEventsFromSelectUser()
+            AttachKeyboardEventsForMainMenu()
+        }, 500)
+    }
+}
+
+function keyboard_events_game_browser() {
+
+}
+
+function AttachKeyboardEventsForMainMenu() {
+    detach_keyboard_events_function()
+    document.body.addEventListener("keydown", keyboard_events_main_menu);
+    detach_keyboard_events_function = DetachKeyboardEventsFromMainMenu
+}
+
+function DetachKeyboardEventsFromMainMenu() {
+    document.body.removeEventListener("keydown", keyboard_events_main_menu);
+}
+
+function AttachKeyboardEventsForSelectUser() {
+    console.log(`AttachKeyboardEventsForSelectUser()`)
+    detach_keyboard_events_function()
+    document.body.addEventListener("keydown", keyboard_events_select_user);
+    detach_keyboard_events_function = DetachKeyboardEventsFromSelectUser
+}
+
+function DetachKeyboardEventsFromSelectUser() {
+    document.body.removeEventListener("keydown", keyboard_events_select_user);
+}
+
+function AttachKeyboardEventsForGameBrowser() {
+    detach_keyboard_events_function()
+    document.body.addEventListener("keydown", keyboard_events_game_browser);
+    detach_keyboard_events_function = DetachKeyboardEventsFromGameBrowser
+}
+
+function DetachKeyboardEventsFromGameBrowser() {
+    document.body.removeEventListener("keydown", keyboard_events_game_browser);
+}
+
+function StartMainMenu() {
+
+    menu.push = `main`
+
+    const def = $(`#o1`); // default menu item
+
+    // change to a new background
+    // Background.change('https://semicolon.dev/static/background-8.png')
+
+    // animate #primary UI block within #main container
+    primary.classList.remove(`hidden`)
+    primary.classList.add(`current`)
+
+    // animate items up
+    let T1 = setTimeout(nothing => {
+        primary.classList.add('up');
+        def.classList.add('current');
+        clearInterval(T1)
+        T1 = null;
+    }, 500)
+
+    // make UI faster (200ms) after initial intro animation that plays at 600ms
+    let T2 = setTimeout(nothing => {
+        primary.classList.add('faster')
+        const selectables = document.querySelectorAll(`#ps5 .sel`);
+        selectables.forEach(selectable => selectable.classList.add(`faster`));
+        clearInterval(T2)
+        T2 = null;
+    }, 1000)
+
+    // attach
+    const ps5_sel = document.querySelectorAll(`#ps5 .sel`);
+    ps5_sel.forEach(selectable =>
+        selectable.addEventListener(`click`, event => {
+            SelectItem(ps5_sel, event.target)
+            HorizontalOffset(primary, event.target.dataset.id)
+        })
+    )
+}
+
+function mouse_events_system_menu() {
+
+    console.log(`Start button pressed!`)
+
+    const system = $(`#system`);
+    const primary = $(`#primary`);
+
+    $(`#start-circle-1`).classList.add(`play-a`)
+    let TA = setTimeout(() => {
+        $(`#start-circle-1`).classList.add(`play-b`)
+        clearTimeout(TA)
+        TA = null
+    }, 200)
+
+    let TB = setTimeout(() => {
+        $(`#start-circle-2`).classList.add(`play-c`)
+        let TC = setTimeout(() => {
+            $(`#start-circle-2`).classList.add(`play-d`)
+            clearTimeout(TC)
+            TC = null
+        }, 300)
+        clearTimeout(TB)
+        TB = null
+
+        let TD = setTimeout(() => {
+            system.style.display = 'none'
+            menu.push = `selectuser`
+            AttachKeyboardEventsForSelectUser()
+        }, 700)
+
+    }, 500)
+}
+
+// currently unused
+const events = {
+    "system": {
+        mouse: {},
+        keyboard: {},},
+    "system-game-browser": {
+        mouse: {},
+        keyboard: {},},
+}
+
+// (hoisted)
+function AttachEventsFor( parentElementId ) {
+
+    switch (parentElementId) {
+
+        // "system" is main system menu with game browser
+        case "system":
+
+            AttachKeyboardEventsForMainMenu()
+
+            // Attach click event to Start button
+            menu.queue[0].addEventListener(`click`, mouse_events_system_menu)
+
+            detach_mouse_events_function = mouse_events_system_menu
+
+          break;
+
+        // "system-browser"
+        case "system-game-browser":
+
+          break;
+        case "main":
+
+          break;
+        case "browser":
+
+          break;
+        case "settings":
+
+          break;
+    }
+}
+
+// (hoisted)
+function RemoveEventsFrom(parentElementId) {
+
+    switch (parentElementId) {
+        case "system":
+
+          break;
+        case "system-browser":
+
+          break;
+        case "main":
+
+          break;
+        case "browser":
+
+          break;
+        case "settings":
+
+          break;
+    }
+}
+
+let selectedGradientDegree = 0
+
+/* Your DOM just loaded */
+window.addEventListener('DOMContentLoaded', event => {
+
+    menu = new MenuPS5()
+
+    // Make item 1 selected (for keyboard controls)
+    menu.selectedItemId = 1
+
+    // Push system menu onto the menu
+    menu.push = `system`
+
+    // This selects any currently selected item
+    // There can only be __one__ currently selected item at a time
+    // Continuously rotate currently selected item's gradient border
+    let rotate = () => {
+        let currentlySelectedItem = $(`div.current .under`)
+        let lightwave = $(`div.current .lightwave`)
+        if (currentlySelectedItem) {
+            currentlySelectedItem.style.background = `conic-gradient(from ${-parseInt(selectedGradientDegree)}deg at 50% 50%, #aaaaaa, black, #aaaaaa, black, #aaaaaa)`
+            lightwave.style.transform = `rotate(${selectedGradientDegree}deg)`;
+            selectedGradientDegree += 0.8
+        }
+        window.requestAnimationFrame(rotate)
+    }
+    window.requestAnimationFrame(rotate)
+});
+
+window.onload = event => {
+  /* Your media (images, etc.) just loaded */
+
+}
+
+  </script>
+
+    <style>
+
+   body { background: black}
+
+   * { font-family: Arial; }
+
+   /* padding shouldn't impact element width this is also CSS grid's default setting */
+   *, *:before, *:after { box-sizing: border-box }
+
+.noselect, .no-select {
+-webkit-touch-callout: none; /* iOS Safari */
+-webkit-user-select: none; /* Safari */
+ -khtml-user-select: none; /* Konqueror HTML */
+   -moz-user-select: none; /* Old versions of Firefox */
+    -ms-user-select: none; /* Internet Explorer/Edge */
+        user-select: none; /* Non-prefixed version, currently
+                              supported by Chrome, Edge, Opera and Firefox */
+}
+
+.rel { position: relative }
+.abs { position: absolute }
+.top { top: 0 }
+.left { left: 0 }
+.right { right: 0 }
+.bottom { bottom: 0 }
+
+/* vertical and horizontal align */
+.f { display: flex; }
+.v { align-items: center }
+.vs { align-items: flex-start }
+.ve { align-items: flex-end }
+.h { justify-content: center }
+.hs { justify-content: flex-start }
+.he { justify-content: flex-end }
+.r { flex-direction: row }
+.rr { flex-direction: row-reverse }
+.c { flex-direction: column }
+.cr { flex-direction: column-reverse }
+.s { justify-content: space-around }
+
+.zero-padding { padding: 0 }
+.o { padding: 5px }
+.p { padding: 10px }
+.pp { padding: 20px }
+.ppp { padding: 30px }
+.pppp { padding: 50px }
+.ppppp { padding: 100px }
+
+.m { margin: 5px }
+.mm { margin: 10px }
+.mmm { margin: 20px }
+.mmmm { margin: 30px }
+
+.lm { margin-left: 8px }
+.lmm { margin-left: 16px }
+.b { font-size: 28px }
+
+.off-0 { margin-left: 0 }
+.off-1 { margin-left: calc(74px * -1) }
+.off-2 { margin-left: calc(74px * -2) }
+.off-3 { margin-left: calc(74px * -3) }
+.off-4 { margin-left: calc(74px * -4) }
+.off-5 { margin-left: calc(74px * -5) }
+.off-6 { margin-left: calc(74px * -6) }
+.off-7 { margin-left: calc(74px * -7) }
+.off-8 { margin-left: calc(74px * -8) }
+
+#select-user-container { transition: 300ms; }
+#select-user-container.off-0 { margin-left: calc(450px * 1) }
+#select-user-container.off-1 { margin-left: calc(450px * 0) }
+#select-user-container.off-2 { margin-left: calc(450px *-1) }
+
+.disappear {
+    opacity: 0 !important;
+    transform: scale(1.5) !important;
+}
+
+.user-circle {
+    transition: 200ms;
+    transform: scale( 0.9 );
+    opacity: 0.5;
+}
+
+#select-user-container .current .user-circle {
+    transform: scale( 1.2 );
+    opacity: 1;
+}
+
+ #ps5 {
+     position: relative;
+     overflow: hidden;
+ }
+
+ #primary {
+     position: absolute;
+     top: 90px;
+     left: 50px;
+     width: 1000px;
+     height: 64px;
+     transition: 600ms !important;
+     transition-timing-function: ease;
+ }
+
+#primary.faster,
+ .faster {
+     transition: 200ms !important;
+ }
+
+ #primary.hidden {
+     left: 1200px;
+ }
+
+ #primary.up {
+     top: 75px;
+ }
+
+.sel {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    margin: 5px;
+    border: 2px solid #1f1f1f;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 400ms;
+    transform-style: preserve-3d;
+    z-index: 3;
+}
+
+.sel.current {
+    width: 100px;
+    height: 100px;
+}
+
+div .under {
+    content:'';
+    position: absolute;
+    width: calc(100% + 8px);
+    height: calc(100% + 8px);
+    margin: -4px -4px;
+    background: #1f1f1f;
+    transform: translateZ(-2px);
+    border-radius: 8px;
+    z-index: 1;
+}
+
+div .lightwave-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: 400ms;
+    background: black;
+    transform: translateZ(-1px);
+    z-index: 2;
+    overflow: hidden;
+}
+
+div .lightwave {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 500%;
+    height: 500%;
+    /*background: radial-gradient(circle at 10% 10%, rgba(72,72,72,1) 0%, rgba(0,0,0,1) 100%);*/
+    filter: blur(10px);
+    transform: translateZ(-1px);
+    z-index: 2;
+    overflow: hidden;
+}
+
+.game { border-radius: 8px; }
+.game .lightwave-container {
+    transform: scale(0.98);
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+}
+
+.sel:hover {
+
+}
+
+ /* min dimensions for any object */
+ .min {
+     width: 45px;
+     height: 45px;
+ }
+
+ /* images */
+ .t { background: transparent url(https://semicolon.dev/static/ps5-ic-bag.png) no-repeat; background-position: center center; z-index: 1; position: relative;}
+ .b { background: transparent url(https://semicolon.dev/static/ps5-ic-rocket.png) no-repeat; background-position: center center; }
+ .a { background: transparent url(https://semicolon.dev/static/ps5-ic-cross.png) no-repeat; background-position: center center; }
+ .ss { background: transparent url(https://semicolon.dev/static/ps5-ic-ps.png) no-repeat; background-position: center center; }
+ .sm { background: transparent url(https://semicolon.dev/static/spiderman-ic.png) no-repeat; background-position: center center; }
+ .d { background: transparent url(https://semicolon.dev/static/ps5-ic-contr.png) no-repeat; background-position: center center; }
+ .e { background: transparent url(https://semicolon.dev/static/ps5-ic-photo.png) no-repeat; background-position: center center; }
+
+ .status-joystick { background:url(https://semicolon.dev/static/status-joystick.png) no-repeat; background-position: center center; }
+ .status-battery { background:url(https://semicolon.dev/static/status-battery.png) no-repeat; background-position: center center; }
+
+ #tab {
+     position: absolute;
+     top: 7px;
+     left: 24px;
+     color: #999999;
+ }
+
+ #tab div { padding: 12px 24px; font-size: 24px }
+ #tab div.on { font-weight: bold; color: white }
+
+ #ps5 {
+    width: 1065px;
+    height: 600px;
+    /*background: url('https://semicolon.dev/static/playstation_5_teaser_v2.jpg');*/
+    background-size: cover;
+ }
+
+ .menu {
+     z-index: 10
+ }
+
+ #ps5 section.menu {
+     opacity: 0;
+     transition: 400ms;
+ }
+
+ #ps5 section.menu.current {
+     display: flex;
+     opacity: 1;
+ }
+
+/* all menus inherit its width and height from parent id=ps5 */
+#main,
+#system,
+#selectuser {
+    position: absolute;
+    width: inherit;
+    height: inherit;
+}
+
+#main { z-index: 100 }
+#selectuser { z-index: 200 }
+#system { z-index: 300 }
+
+#selectuser .header { font-size: 21px }
+#selectuser .subtext { font-size: 16px; color: gray }
+
+* {color:white;}
+
+#start {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: url(https://semicolon.dev/static/PS5-START-BUTTON.png) no-repeat;
+    background-size: cover;
+    background-position: center center;
+    transform-style: preserve-3d;
+    cursor: pointer;
+    transition: 400ms;
+    z-index: 100000;
+}
+
+#press-ps-button {
+     position: relative;
+     height: 200px;
+     width: 100%;
+     color: white;
+     font-size: 20px;
+}
+
+#start:hover {
+    transform: scale(1.1);
+}
+
+#oo {
+    position: absolute;
+    top: 154px;
+    left: 167px;
+    font-size: 17px;
+    font-weight: bold;
+    color: white;
+}
+
+#background-1,
+#background-2 {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: inherit;
+    height: inherit;
+    background: transparent;
+    background-position: center center;
+    background-size: cover;
+    pointer-events: none;
+    transition: 100ms;
+    z-index: 0;
+    opacity: 0;
+    transform: scale(1.0);
+    /*filter: blur(5px)*/
+}
+
+.fade-in { opacity: 0.75 !important; transform: scale(1.1) !important; filter: blur(0) !important; z-index: 1 }
+
+#background-2 { background-image: url(https://semicolon.dev/static/playstation_5_teaser_v2.jpg); }
+
+#space-filler-100 {
+    height: 100px;
+}
+
+#space-filler {
+    height: 200px;
+}
+
+#start { transform: translateZ(-1px) }
+
+#start-circle-1,
+#start-circle-2 {
+    position: absolute;
+    display: block;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: transparent;
+    border: 10px solid white;
+    transform: translateZ(-2px);
+    transition: 1200ms;
+    opacity: 2;
+}
+
+#start-circle-2 {
+    transition: 600ms;
+}
+
+#start-circle-1.play-a {
+    transform: translateZ(-2px) scale(4);
+    border: 3px solid white;
+    filter: blur(1px);
+    opacity: 0.5;
+}
+
+#start-circle-1.play-b {
+    transform: translateZ(-2px) scale(8);
+    filter: blur(5px);
+    opacity: 0;
+}
+
+#start-circle-2.play-c {
+    transform: translateZ(-2px) scale(3);
+    border: 2px solid white;
+    /*filter: blur(1px);*/
+
+}
+
+#start-circle-2.play-d {
+    transform: translateZ(-2px) scale(8);
+    opacity: 0;
+}
+
+#game-browser {
+    position: absolute;
+    top: 300px;
+    left: 60px;
+    width: 960px;
+    height: 800px;
+}
+
+.game {
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
+    width: 230px;
+    height: 230px;
+    margin: 2px;
+}
+
+.game .under {
+    border-radius: 8px;
+}
+
+.game .image {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 220px;
+    height: 220px;
+    z-index: 2;
+    transition: 400ms;
+    opacity: 0.5 !important
+}
+
+.game.current .image {
+    opacity: 1 !important
+}
+
+.game:nth-child(1) .image { background: url('https://semicolon.dev/static/game0.png') no-repeat; background-size: cover }
+.game:nth-child(2) .image { background: url('https://semicolon.dev/static/game1.png') no-repeat; background-size: cover }
+.game:nth-child(3) .image { background: url('https://semicolon.dev/static/game2.png') no-repeat; background-size: cover }
+.game:nth-child(4) .image { background: url('https://semicolon.dev/static/game3.png') no-repeat; background-size: cover }
+
+.game:nth-child(5) .image { background: url('https://semicolon.dev/static/game4.png') no-repeat; background-size: cover }
+.game:nth-child(6) .image { background: url('https://semicolon.dev/static/game5.png') no-repeat; background-size: cover }
+.game:nth-child(7) .image { background: url('https://semicolon.dev/static/game6.png') no-repeat; background-size: cover }
+.game:nth-child(8) .image { background: url('https://semicolon.dev/static/game7.png') no-repeat; background-size: cover }
+
+.game:nth-child(9) .image { background: url('https://semicolon.dev/static/game8.png') no-repeat; background-size: cover }
+.game:nth-child(10) .image { background: url('https://semicolon.dev/static/game9.png') no-repeat; background-size: cover }
+.game:nth-child(11) .image { background: url('https://semicolon.dev/static/game10.png') no-repeat; background-size: cover }
+.game:nth-child(12) .image { background: url('https://semicolon.dev/static/game11.png') no-repeat; background-size: cover }
+
+.game:nth-child(13) .image { background: url('https://semicolon.dev/static/game12.png') no-repeat; background-size: cover }
+.game:nth-child(14) .image { background: url('https://semicolon.dev/static/game13.png') no-repeat; background-size: cover }
+.game:nth-child(15) .image { background: url('https://semicolon.dev/static/game14.png') no-repeat; background-size: cover }
+.game:nth-child(16) .image { background: url('https://semicolon.dev/static/game15.png') no-repeat; background-size: cover }
+
+.user-container {
+    width: 175px;
+    height: 175px;
+    display: block;
+    position: relative;
+    margin: 25px;
+    margin-bottom: 75px;
+}
+
+.user-container .user-circle {
+    width: 150px;
+    height: 150px;
+    display: block;
+    position: relative;
+    border-radius: 50%;
+
+}
+
+.user-box {
+    width: 175px;
+    height: 175px;
+}
+
+.user-des {
+    display: block;
+    position: relative;
+    width: 175px;
+    height: 50px;
+    text-align: center;
+    margin-top: 16px;
+    color: gray;
+}
+
+#select-user-options {
+    font-size: 15px;
+}
+
+.user-0 {
+    background-color: rgba(100, 100, 100, 0.25);
+    background-image: url(https://semicolon.dev/static/cross.png);
+    background-position: center center;
+}
+.user-1 {
+    background-color: rgba(100, 100, 100, 0.25);
+    background-image: url(https://semicolon.dev/static/hedgehog.png);
+    background-position: center center;
+}
+.user-2 {
+    background-color: rgba(100, 100, 100, 0.25);
+    background-image: url(https://semicolon.dev/static/ghost.png);
+    background-position: center center;
+}
+
+#game-browser { transition: 200ms }
+#game-browser.y-0 { margin-top: 0 !important }
+#game-browser.y-1 { margin-top: calc(230px * -1) !important }
+#game-browser.y-2 { margin-top: calc(230px * -2) !important }
+#game-browser.y-3 { margin-top: calc(230px * -3) !important }
+
+</style>
+
+</head>
+<body>
+
+<!-- main app scaffold //-->
+<section id = "ps5" class = "rel" style = "z-index: 10">
+
+    <section id = "background-1" class = "nextBackground"></section>
+    <section id = "background-2" class = "currentBackground fade-in"></section>
+
+    <section id = "system" class = "menu f v h c s">
+        <div id = "press-ps-button" class = "f v h">Press the PS button on your controller.</div>
+        <div id = "start" class = "f v h">
+            <div id = "start-circle-1"></div>
+            <div id = "start-circle-2"></div>
+        </div>
+        <div id = "space-filler" class = "f v h"></div>
+    </section>
+
+    <section id = "selectuser" class = "menu none f v h c s">
+        <div id = "space-filler-100" class = "f v h"></div>
+        <section class = "header">Welcome Back to PlayStation</section>
+        <section class = "subtext">Who's using this controller?</section>
+        <section id = "select-user-controller"></section>
+        <section id = "select-user-container" class = "f v h r">
+            <section class = "user-container f v h c">
+                <section id = "user-0" class = "user-box f v h">
+                    <section class = "user-circle user-0"></section>
+                </section>
+                <section class = "user-des">Add User</section>
+            </section>
+            <section class = "user-container f v h c">
+                <section id = "user-1" class = "current user-box f v h">
+                    <section class = "user-circle user-1"></section>
+                </section>
+                <section class = "user-des">Mutant Dust Bunny</section>
+            </section>
+            <section class = "user-container f v h c">
+                <section id = "user-2" class = "user-box f v h">
+                    <section class = "user-circle user-2"></section>
+                </section>
+                <section class = "user-des">Someone Else</section>
+            </section>
+        </section>
+        <section id = "select-user-options"><img src = "https://semicolon.dev/static/playstation5-options-ui.png"
+                                                 style = "vertical-align: middle; margin-top: -2px; margin-right: 10px;" alt = "PS5 options" /> Options</section>
+        <div id = "space-filler-100" class = "f v h"></div>
+    </section>
+
+    <section id = "main" class = "menu f v h">
+
+        <section id = "tab" class = "f">
+            <div class = "on">Games</div>
+            <div>Media</div>
+        </section>
+
+        <section id = "primary" class = "menu none hidden f">
+            <div id = "o0" data-id = "0" class = "sel t"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div></div>
+            <div id = "o1" data-id = "1" class = "sel b"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div></div>
+            <div id = "o2" data-id = "2" class = "sel sm"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div></div>
+            <div id = "o3" data-id = "3" class = "sel a"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div></div>
+            <div id = "o4" data-id = "4" class = "sel ss"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div></div>
+            <div id = "o5" data-id = "5" class = "sel d"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div></div>
+            <div id = "o6" data-id = "6" class = "sel e"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div></div>
+            <div id = "o7" data-id = "7" class = "sel"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div></div>
+            <div id = "o8" data-id = "8" class = "sel"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div></div>
+            <div id = "o9" data-id = "9" class = "sel"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div></div>
+        </section>
+
+        <section id = "oo"></section>
+
+        <section id = "game-browser">
+
+            <!-- games -->
+
+            <div class = "game" data-id = "game-0-0"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div><div class = "image"></div></div>
+            <div class = "game" data-id = "game-1-0"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div><div class = "image"></div></div>
+            <div class = "game" data-id = "game-2-0"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div><div class = "image"></div></div>
+            <div class = "game" data-id = "game-3-0"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div><div class = "image"></div></div>
+
+            <div class = "game" data-id = "game-0-1"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div><div class = "image"></div></div>
+            <div class = "game" data-id = "game-1-1"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div><div class = "image"></div></div>
+            <div class = "game" data-id = "game-2-1"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div><div class = "image"></div></div>
+            <div class = "game" data-id = "game-3-1"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div><div class = "image"></div></div>
+
+            <div class = "game" data-id = "game-0-2"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div><div class = "image"></div></div>
+            <div class = "game" data-id = "game-1-2"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div><div class = "image"></div></div>
+            <div class = "game" data-id = "game-2-2"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div><div class = "image"></div></div>
+            <div class = "game" data-id = "game-3-2"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div><div class = "image"></div></div>
+
+            <div class = "game" data-id = "game-0-3"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div><div class = "image"></div></div>
+            <div class = "game" data-id = "game-1-3"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div><div class = "image"></div></div>
+            <div class = "game" data-id = "game-2-3"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div><div class = "image"></div></div>
+            <div class = "game" data-id = "game-3-3"><div class = "under"></div><div class = "lightwave-container"><div class = "lightwave"></div></div><div class = "image"></div></div>
+
+        </section>
+
+    </section>
+
+    <section id = "status" class = "f s abs top right current">
+        <div id = "status-joystick min rel"></div>
+        <div id = "status-battery min rel"></div>
+    </section>
+
+</section>
+
+</body>
+</html>
