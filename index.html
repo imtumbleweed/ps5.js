@@ -2,314 +2,516 @@
 
 <head>
 
-    <title>PS5-UI.js</title>
+ <title>PS5-UI.js</title>
 
-    <meta charset="UTF-8">
+  <meta charset="UTF-8">
 
-    <meta name = "description" content = "HTML starter reset file">
-    <meta name = "keywords" content = "html, css, events, mouse, keyboard, mobile first, media queries">
-    <meta name = "author" content = "You">
-    <meta name = "viewport" content = "width=device-width, initial-scale=1.0">
+  <meta name = "description" content = "HTML starter reset file">
+  <meta name = "keywords" content = "html, css, events, mouse, keyboard, mobile first, media queries">
+  <meta name = "author" content = "You">
+  <meta name = "viewport" content = "width=device-width, initial-scale=1.0">
 
-    <!-- Note: type "module", not "javascript" -->
-    <script type = "module">
+  <!-- Note: type "module", not "javascript" -->
+  <script type = "module">
 
-    // fetch GET example; todo: needs test data properties
-    false && fetch("https://www.twitter.com/followers.json", { method: "get"}).then( (response) => response.text().then(msg => {
-        console.log(msg); // Message returned from the server
-    }));
+       // Map variables representing keys to ASCII codes
+       let [ A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z ] = Array.from({ length: 26 }, (v, i) => 65 + i);
 
-    // fetch POST example; todo: add
+       const Delete = 46;
+       const Shift = 16;
+       const Ctrl = 17;
+       const Alt = 18;
 
-    // Use $ and $$ instead of dinosauric document.querySelector function
-    let $ = selector => document.querySelector(selector);
-    let $$ = selector => document.querySelectorAll(selector);
+       // Arrow keys
+       const Left = 37;
+       const Right = 39;
+       const Up = 38;
+       const Down = 40;
+    
+       // fetch GET example; todo: needs test data properties
+       false && fetch("https://www.twitter.com/followers.json", { method: "get"}).then( (response) => response.text().then(msg => {
+           console.log(msg); // Message returned from the server
+       }));
 
-    // Sort json by multiple properties
-    const sortFields = (fields, invert) => (a, b) => fields.map(o => { let dir = 1; if (o[0] === '-') { dir = -1; o=o.substring(1); } return a[o] > b[o] ? dir : a[o] < b[o] ? -(dir) : 0;}).reduce((p, n) => p ? p : n, 0);
+      // Use $ and $$ instead of dinosauric document.querySelector function
+      let $ = selector => document.querySelector(selector);
+      let $$ = selector => document.querySelectorAll(selector);
 
-// menu queue object for layered PS5 navigation
-class MenuPS5 {
+      // Sort json by multiple properties
+      const sortFields = (fields, invert) => (a, b) => fields.map(o => { let dir = 1; if (o[0] === '-') { dir = -1; o=o.substring(1); } return a[o] > b[o] ? dir : a[o] < b[o] ? -(dir) : 0;}).reduce((p, n) => p ? p : n, 0);
 
-    constructor() {
-        this.queue = []
-    }
+      const MENU = Object.freeze({
+          system: {
+              name: `system`,
+              subitems:
+                  ["Bag",
+                  "Rocket",
+                  "Arrows",
+                  "PlayStation",
+                  "Controller",
+                  "Photos",
+                  "Empty 1",
+                  "Empty 2",
+                  "Empty 3"]},
+          main: {
+               name: `main`,
+               subitems:
+                   []},
+          browser: {
+               name: `browser`,
+               subitems:
+                   []},
+          settings: {
+               name: `settings`,
+               subitems:
+                   []},
+      });
 
-    set push(elementId) {
-        // hide previous menu on the queue by removing "current" class
-        this.queue.length > 0 && this.queue[this.queue.length - 1].classList.remove(`current`)
+      // queable menu
+      let menu = null;
 
-        // get menu container
-        const menu = $(`#${elementId}`)
+      // menu queue object for layered PS5 navigation
+      class MenuPS5 {
 
-        // make the new menu appear by applying "current" class
-        !menu.classList.contains(`current`) && menu.classList.add(`current`)
+          constructor() {
+              this.queue = []
+              this.selectedItemId = null;
+          }
 
-        // push this element onto the menu queue
-        this.queue.push( menu )
+          set push(elementId) {
 
-        console.log(`Pushed #${elementId} onto the menu queue`)
-    }
+              // hide previous menu on the queue by removing "current" class
+              this.queue.length > 0 && this.queue[this.queue.length - 1].classList.remove(`current`)
 
-    pop() {
-        // remove current menu from queue
-        const element = this.queue.pop()
+              // remove events from current menu
+              // todo
 
-        console.log(`Removed #${element.getAttribute('id')} from the menu queue`)
+              // get menu container
+              const m = $(`#${elementId}`) 
+
+              // make the new menu appear by applying "current" class
+              !m.classList.contains(`current`) && m.classList.add(`current`)
+              
+              // push this element onto the menu queue
+              this.queue.push( m )
+
+              AttachEventsFor( elementId )
+
+              console.log(`Pushed #${elementId} onto the menu queue`)
+          }
+
+          pop() {
+              // remove current menu from queue
+              const element = this.queue.pop()
+
+              console.log(`Removed #${element.getAttribute('id')} from the menu queue`)
+          }
+      }
+
+function HorizontalOffset(parent, id) {
+
+    if (typeof(parent) == "object") {
+        parent.className.split(' ').forEach(className => {
+         console.log(className)
+            // remove all classes starting with `off`
+            if (className.substring(0, 3) == `off`)
+                parent.classList.remove( className )
+            // add off-id class 
+            parent.classList.add(`off-${id}`)
+        })
     }
 }
 
-    const MENU = Object.freeze({
-        system: `system`,
-        main: `main`,
-        browser: `browser`,
-        settings: `settings`,
-    });
-
-    /* Your DOM just loaded */
-    window.addEventListener('DOMContentLoaded', event => {
-
-      // Instantiate the queable menu
-      const menu = new MenuPS5()
-
-      // Push system menu onto the menu
-      menu.push = `system`
-
-      // Attach click event to Start button
-      menu.queue[0].addEventListener(`click`, event => {
-
-          const primary = $(`#primary`);
-
-          // default menu item
-          const def = $(`#o2`);
-
-          console.log(`Start button pressed!`)
-
-          // begin the ps5 demo!
-          menu.push = `main`
-
-          // animate #primary UI block within #main container
-          primary.classList.remove(`hidden`)
-          primary.classList.add(`current`)
-
-          // animate items up
-          let T1 = setTimeout(nothing => {
-
-              primary.classList.add('up');
-
-              def.classList.add('current');
-
-              // destroy this timer
-              clearInterval(T1)
-              T1 = null;
-          }, 500)
-      })
-
-    });
-
-    window.onload = event => {
-      /* Your media (images, etc.) just loaded */
-
+// Helper function to select 1 item from a set
+function SelectItem(all, target) {
+    if (typeof(all) == "string" && typeof(target) == "string") {
+        $$(all).forEach(it => it.classList.remove('current'))
+        $(target).classList.add('current')
+        menu.selectedItemId = $(target).dataset.id
     }
+    if (typeof(all) == "object" && typeof(target) == "object") {
+        all.forEach(it => it.classList.remove('current'))
+        target.classList.add('current')
+        menu.selectedItemId = target.dataset.id
+    }
+}
+
+// Reset a menu to its original state right before it opens
+function InitializeMenu( parentElementId ) {
+
+}
+
+// (hoisted)
+function AttachEventsFor( parentElementId ) {
+ 
+    const oo = $(`#oo`);
+    const primary = $(`#primary`);    
+
+    switch (parentElementId) {
+
+        case "system":
+
+            // Attach keyboard controls
+            document.body.addEventListener("keydown", (e) => {
+
+                let key = e.which || e.keyCode;
+                
+                if (key == Z || key == Left) {
+                    console.log(`Controls: ${key} (Left)`)
+                    if (menu.selectedItemId > 0)
+                        menu.selectedItemId--;
+                    else
+                        menu.selectedItemId = 8
+                    const all = `#primary .sel`
+                    const target = `#o${menu.selectedItemId}`
+                    SelectItem(all, target)
+                    HorizontalOffset(primary, menu.selectedItemId)
+                    oo.innerHTML = MENU[`system`].subitems[ menu.selectedItemId ];
+                }
+
+                if (key == X || key == Right) {
+                    console.log(`Controls: ${key} (Right)`)
+                    if (menu.selectedItemId < 8)
+                        menu.selectedItemId++;
+                    else
+                        menu.selectedItemId = 0;
+                    const all = `#primary .sel`
+                    const target = `#o${menu.selectedItemId}`
+                    SelectItem(all, target)
+                    HorizontalOffset(primary, menu.selectedItemId)
+                    oo.innerHTML = MENU[`system`].subitems[ menu.selectedItemId ];
+                }
+                
+            });
+
+            // Attach click event to Start button
+            menu.queue[0].addEventListener(`click`, event => {
+
+                // default menu item
+                const def = $(`#o1`);
+
+                console.log(`Start button pressed!`)
+
+                // begin the ps5 demo!
+                menu.push = `main`
+
+                // animate #primary UI block within #main container
+                primary.classList.remove(`hidden`)
+                primary.classList.add(`current`)
+
+                // animate items up
+                let T1 = setTimeout(nothing => {                    
+                    primary.classList.add('up');
+                    def.classList.add('current');
+                    clearInterval(T1) 
+                    T1 = null;
+                }, 500)
+
+                // make UI faster (200ms) after initial intro animation that plays at 600ms
+                let T2 = setTimeout(nothing => {
+                    primary.classList.add('faster')                
+                    const selectables = $$(`#ps5 .sel`);
+                    selectables.forEach(selectable => selectable.classList.add(`faster`));
+                    clearInterval(T2)
+                    T2 = null;
+                }, 1000)
+
+
+                // attach
+                const ps5_sel = $$(`#ps5 .sel`);
+                ps5_sel.forEach(selectable =>
+                    selectable.addEventListener(`click`, event => {
+                        SelectItem(ps5_sel, event.target)
+                        HorizontalOffset(primary, event.target.dataset.id)
+                    })
+                )
+
+            })
+          break;
+        case "main":
+
+          break;
+        case "browser":
+
+          break;
+        case "settings":
+
+          break;
+    }
+}
+
+// (hoisted)
+function RemoveEventsFrom(parentElementId) {
+
+    switch (parentElementId) {
+        case "system":
+
+          break;
+        case "main":
+
+          break;
+        case "browser":
+
+          break;
+        case "settings":
+
+          break;
+    }
+}
+
+/* Your DOM just loaded */
+window.addEventListener('DOMContentLoaded', event => {      
+
+  // Instantiate menu
+  menu = new MenuPS5()
+
+  // Make item 1 selected (for keyboard controls)
+  menu.selectedItemId = 1
+
+  // Push system menu onto the menu
+  menu.push = `system`
+
+});
+
+window.onload = event => {
+  /* Your media (images, etc.) just loaded */
+  
+}
 
   </script>
 
-    <style>
+<style>
 
     * { font-family: Arial; }
 
-    /* padding shouldn't impact element width this is also CSS grid's default setting */
-    *, *:before, *:after { box-sizing: border-box }
+   /* padding shouldn't impact element width this is also CSS grid's default setting */
+   *, *:before, *:after { box-sizing: border-box }
 
-    .noselect, .no-select {
-    -webkit-touch-callout: none; /* iOS Safari */
-    -webkit-user-select: none; /* Safari */
-     -khtml-user-select: none; /* Konqueror HTML */
-       -moz-user-select: none; /* Old versions of Firefox */
-        -ms-user-select: none; /* Internet Explorer/Edge */
-            user-select: none; /* Non-prefixed version, currently
-                                  supported by Chrome, Edge, Opera and Firefox */
-    }
+.noselect, .no-select {
+-webkit-touch-callout: none; /* iOS Safari */
+-webkit-user-select: none; /* Safari */
+ -khtml-user-select: none; /* Konqueror HTML */
+   -moz-user-select: none; /* Old versions of Firefox */
+    -ms-user-select: none; /* Internet Explorer/Edge */
+        user-select: none; /* Non-prefixed version, currently
+                              supported by Chrome, Edge, Opera and Firefox */
+}
 
-    .rel { position: relative }
-    .abs { position: absolute }
-    .top { top: 0 }
-    .left { left: 0 }
-    .right { right: 0 }
-    .bottom { bottom: 0 }
+.rel { position: relative }
+.abs { position: absolute }
+.top { top: 0 }
+.left { left: 0 }
+.right { right: 0 }
+.bottom { bottom: 0 }
 
-    /* vertical and horizontal align */
-    .f { display: flex; }
-    .v { align-items: center }
-    .vs { align-items: flex-start }
-    .ve { align-items: flex-end }
-    .h { justify-content: center }
-    .hs { justify-content: flex-start }
-    .he { justify-content: flex-end }
-    .r { flex-direction: row }
-    .rr { flex-direction: row-reverse }
-    .c { flex-direction: column }
-    .cr { flex-direction: column-reverse }
-    .s { justify-content: space-around }
+/* vertical and horizontal align */
+.f { display: flex; }
+.v { align-items: center }
+.vs { align-items: flex-start }
+.ve { align-items: flex-end }
+.h { justify-content: center }
+.hs { justify-content: flex-start }
+.he { justify-content: flex-end }
+.r { flex-direction: row }
+.rr { flex-direction: row-reverse }
+.c { flex-direction: column }
+.cr { flex-direction: column-reverse }
+.s { justify-content: space-around }
 
-    .zero-padding { padding: 0 }
-    .o { padding: 5px }
-    .p { padding: 10px }
-    .pp { padding: 20px }
-    .ppp { padding: 30px }
-    .pppp { padding: 50px }
-    .ppppp { padding: 100px }
+.zero-padding { padding: 0 }
+.o { padding: 5px }
+.p { padding: 10px }
+.pp { padding: 20px }
+.ppp { padding: 30px }
+.pppp { padding: 50px }
+.ppppp { padding: 100px }
 
-    .m { margin: 5px }
-    .mm { margin: 10px }
-    .mmm { margin: 20px }
-    .mmmm { margin: 30px }
+.m { margin: 5px }
+.mm { margin: 10px }
+.mmm { margin: 20px }
+.mmmm { margin: 30px }
 
-    .lm { margin-left: 8px }
-    .lmm { margin-left: 16px }
-    .b { font-size: 28px }
+.lm { margin-left: 8px }
+.lmm { margin-left: 16px }
+.b { font-size: 28px }
 
-     #ps5 {
-         position: relative;
-         overflow: hidden;
-     }
+.off-0 { margin-left: 0 }
+.off-1 { margin-left: calc(74px * -1) }
+.off-2 { margin-left: calc(74px * -2) }
+.off-3 { margin-left: calc(74px * -3) }
+.off-4 { margin-left: calc(74px * -4) }
+.off-5 { margin-left: calc(74px * -5) }
+.off-6 { margin-left: calc(74px * -6) }
+.off-7 { margin-left: calc(74px * -7) }
+.off-8 { margin-left: calc(74px * -8) }
+ 
+ #ps5 {
+     position: relative;
+     overflow: hidden;
+ }
 
-     #primary {
-         position: absolute;
-         top: 90px;
-         left: 50px;
-         width: 1000px;
-         height: 64px;
-         transition: 600ms !important;
-         transition-timing-function: ease;
-     }
+ #primary {
+     position: absolute;
+     top: 90px;
+     left: 50px;
+     width: 1000px;
+     height: 64px;
+     transition: 600ms !important;
+     transition-timing-function: ease;
+ }
 
-     #primary.hidden {
-         left: 1200px;
-     }
+#primary.faster,
+ .faster {
+     transition: 200ms !important;
+ }
 
-     #primary.up {
-         top: 75px;
-     }
+ #primary.hidden {
+     left: 1200px;
+ }
 
-     .sel {
-         position: relative;
-         width: 64px;
-         height: 64px;
-         border: 2px solid #777777;
-         transition: 400ms;
-         margin: 5px;
-         border-radius: 8px;
-         cursor: pointer;
-         transition: 400ms;
-     }
+ #primary.up {
+     top: 75px;
+ }
 
-     .sel:hover {
-         border-color: yellow;
-     }
-     .sel.current {
-         width: 100px;
-         height: 100px;
-     }
+ .sel {
+     position: relative;
+     width: 64px;
+     height: 64px;
+     background: black;
+     border: 2px solid #1f1f1f;
+     transition: 400ms;
+     margin: 5px;
+     border-radius: 8px;
+     cursor: pointer;
+     transition: 400ms;
+     z-index: 0;
+ }
 
-     /* min dimensions for any object */
-     .min {
-         width: 45px;
-         height: 45px;
-     }
+ .sel:hover {
+     border-color: yellow;
+ }
+ .sel.current {
+     width: 100px;
+     height: 100px;    
+ }
 
-     /* images */
-     .t { background:url(https://semicolon.dev/static/ps5-ic-bag.png) no-repeat; background-position: center center; }
-     .b { background:url(https://semicolon.dev/static/ps5-ic-rocket.png) no-repeat; background-position: center center; }
-     .a { background:url(https://semicolon.dev/static/ps5-ic-cross.png) no-repeat; background-position: center center; }
-     .s { background:url(https://semicolon.dev/static/ps5-ic-ps.png) no-repeat; background-position: center center; }
-     .d { background:url(https://semicolon.dev/static/ps5-ic-contr.png) no-repeat; background-position: center center; }
-     .e { background:url(https://semicolon.dev/static/ps5-ic-photo.png) no-repeat; background-position: center center; }
+ .sel::before {
+    content:'';
+    position: absolute;
+    width: calc(100% + 4px);
+    height: calc(100% + 4px);
+    margin: -2px -2px;
+    background: red;
+    z-index: 0;
+ }
 
-     .status-joystick { background:url(https://semicolon.dev/static/status-joystick.png) no-repeat; background-position: center center; }
-     .status-battery { background:url(https://semicolon.dev/static/status-battery.png) no-repeat; background-position: center center; }
+ /* min dimensions for any object */
+ .min {
+     width: 45px;
+     height: 45px;
+ }
 
-     #tab {
-         position: absolute;
-         top: 7px;
-         left: 24px;
-         color: #999999;
-     }
+ /* images */
+ .t { background: #000000 url(https://semicolon.dev/static/ps5-ic-bag.png) no-repeat; background-position: center center; }
+ .b { background: #000000 url(https://semicolon.dev/static/ps5-ic-rocket.png) no-repeat; background-position: center center; }
+ .a { background: #000000 url(https://semicolon.dev/static/ps5-ic-cross.png) no-repeat; background-position: center center; }
+ .s { background: #000000 url(https://semicolon.dev/static/ps5-ic-ps.png) no-repeat; background-position: center center; }
+ .d { background: #000000 url(https://semicolon.dev/static/ps5-ic-contr.png) no-repeat; background-position: center center; }
+ .e { background: #000000 url(https://semicolon.dev/static/ps5-ic-photo.png) no-repeat; background-position: center center; }
 
-     #tab div { padding: 12px 24px; font-size: 24px }
-     #tab div.on { font-weight: bold; color: white }
+ .status-joystick { background:url(https://semicolon.dev/static/status-joystick.png) no-repeat; background-position: center center; }
+ .status-battery { background:url(https://semicolon.dev/static/status-battery.png) no-repeat; background-position: center center; }
+ 
+ #tab {
+     position: absolute;
+     top: 7px;
+     left: 24px;
+     color: #999999;
+ }
+ 
+ #tab div { padding: 12px 24px; font-size: 24px }
+ #tab div.on { font-weight: bold; color: white }
 
-     #ps5 {
-        width: 1065px;
-        height: 600px;
-        background: black;
-     }
+ #ps5 {
+    width: 1065px;
+    height: 600px;
+    background: url('https://semicolon.dev/static/playstation_5_teaser_v2.jpg');
+    background-size: cover;
+ }
 
-     /* */
-     #ps5 section.menu {
+ /* */
+ #ps5 section.menu {
+     opacity: 0;
+     transition: 400ms;
+ }
 
-         opacity: 0;
+ #ps5 section.menu.current {
+     display: flex;
+     opacity: 1;
+ }
 
-         transition: 400ms;
-     }
+/* all menus inherit its width and height from parent id=ps5 */
+#system {
+    width: inherit;
+    height: inherit;
+}
 
-     #ps5 section.menu.current {
-         display: flex;
-         opacity: 1;
-     }
+#start {
+    width: 200px;
+    height: 45px;
+    border-radius: 32px;
+    background: white;
+    color: black;
+    font-size: 27px;
+    text-align: center;
+    font-weight: bold;
+    cursor: pointer;
+}
 
-    /* all menus inherit its width and height from parent id=ps5 */
-    #system {
-        width: inherit;
-        height: inherit;
-    }
-
-    #start {
-        width: 200px;
-        height: 45px;
-        border-radius: 32px;
-        background: white;
-        color: black;
-        font-size: 27px;
-        text-align: center;
-        font-weight: bold;
-        cursor: pointer;
-    }
-
+#oo {
+    position: absolute;
+    top: 154px;
+    left: 167px;
+    font-size: 17px;
+    font-weight: bold;
+    color: white;
+}
+     
  </style>
-</head>
-<body>
+ </head>
+ <body>
 
-<section id = "ps5" class = "rel">
-
-    <section id = "system" class = "menu f v h">
-        <div id = "start" class = "f v h">Start</div>
-    </section>
-
-    <section id = "main" class = "menu f v h">
-        <section id = "tab" class = "f">
-            <div class = "on">Games</div>
-            <div>Media</div>
+    <section id = "ps5" class = "rel">
+    
+        <section id = "system" class = "menu f v h">
+            <div id = "start" class = "f v h">Start</div>
         </section>
-        <section id = "primary" class = "f menu hidden">
-            <div id = "o1" class = "sel t"></div>
-            <div id = "o2" class = "sel b"></div>
-            <div id = "o3" class = "sel a"></div>
-            <div id = "o4" class = "sel s"></div>
-            <div id = "o5" class = "sel d"></div>
-            <div id = "o6" class = "sel e"></div>
-            <div id = "o7" class = "sel"></div>
-            <div id = "o8" class = "sel"></div>
-            <div id = "o9" class = "sel"></div>
+        
+        <section id = "main" class = "menu f v h">
+            <section id = "tab" class = "f">
+                <div class = "on">Games</div>
+                <div>Media</div>
+            </section>
+            <section id = "primary" class = "f menu hidden">
+                <div id = "o0" data-id = "0" class = "sel t"></div>
+                <div id = "o1" data-id = "1" class = "sel b"></div>
+                <div id = "o2" data-id = "2" class = "sel a"></div>
+                <div id = "o3" data-id = "3" class = "sel s"></div>
+                <div id = "o4" data-id = "4" class = "sel d"></div>
+                <div id = "o5" data-id = "5" class = "sel e"></div>
+                <div id = "o6" data-id = "6" class = "sel"></div>
+                <div id = "o7" data-id = "7" class = "sel"></div>
+                <div id = "o8" data-id = "8" class = "sel"></div>
+            </section>
+            <section id = "oo"></section>
         </section>
+        
+        <section id = "status" class = "f s abs current">
+            <div id = "status-joystick min rel"></div>
+            <div id = "status-battery min rel"></div>
+        </section>
+    
     </section>
-
-    <section id = "status" class = "f s abs current">
-        <div id = "status-joystick min rel"></div>
-        <div id = "status-battery min rel"></div>
-    </section>
-
-</section>
 
 </body>
 </html>
